@@ -62,6 +62,17 @@ I used `rqt` to monitor the image topic and visualize. Feel free to use any othe
 
 ![Image Output](/docs/screenshots/Image_Output.png "Output")
 
+### gpio_interrupt_publisher
+
+Publish to a ros topic on GPIO interrupt trigger.
+
+>TODO
+### reconnection_example
+
+Reconnect to micro-ros-agent upon agent disconnect. 
+
+>TODO
+
 ## Extras
 
 ### Display forwarding MacOS
