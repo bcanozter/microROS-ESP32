@@ -1,12 +1,8 @@
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
 #include "driver/gpio.h"
-#include "inttypes.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
 #include "esp_system.h"
+#include "esp_log.h"
 #include "esp_timer.h"
 #include <uros_network_interfaces.h>
 #include <rcl/rcl.h>
@@ -57,9 +53,9 @@ static volatile uint32_t last_isr_time = 0;
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
-    static uint32_t last_interrupt_time = 0;
     uint32_t current_time = esp_timer_get_time() / 1000;
-    if (current_time - last_isr_time > DEBOUNCE_TIME_MS) {
+    if (current_time - last_isr_time > DEBOUNCE_TIME_MS)
+    {
         last_isr_time = current_time;
         xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
     }
@@ -72,13 +68,13 @@ void gpio_interrupt_handler(void *arg)
     {
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY))
         {
-            while(gpio_get_level(io_num) == 0){
+            while (gpio_get_level(io_num) == 0)
+            {
                 printf("GPIO[%" PRIu32 "] intr, val: %d\n", io_num, 0);
                 msg.data = 0;
                 RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
-
         }
     }
 }

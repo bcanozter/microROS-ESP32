@@ -1,11 +1,8 @@
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
 #include "driver/gpio.h"
-#include "inttypes.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
+#include "esp_log.h"
 #include "esp_timer.h"
 #include <uros_network_interfaces.h>
 #include <rcl/rcl.h>
@@ -48,9 +45,9 @@ static volatile uint32_t last_isr_time = 0;
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
-    static uint32_t last_interrupt_time = 0;
     uint32_t current_time = esp_timer_get_time() / 1000;
-    if (current_time - last_isr_time > DEBOUNCE_TIME_MS) {
+    if (current_time - last_isr_time > DEBOUNCE_TIME_MS)
+    {
         last_isr_time = current_time;
         xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
     }
@@ -71,54 +68,54 @@ void gpio_interrupt_handler(void *arg)
     }
 }
 
-void micro_ros_task(void * arg)
+void micro_ros_task(void *arg)
 {
-	rcl_allocator_t allocator = rcl_get_default_allocator();
-	rclc_support_t support;
+    rcl_allocator_t allocator = rcl_get_default_allocator();
+    rclc_support_t support;
 
-	rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
-	RCCHECK(rcl_init_options_init(&init_options, allocator));
+    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
+    RCCHECK(rcl_init_options_init(&init_options, allocator));
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
-	rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
+    rmw_init_options_t *rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
 
-	// Static Agent IP and port can be used instead of autodisvery.
-	RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
-	//RCCHECK(rmw_uros_discover_agent(rmw_options));
+    // Static Agent IP and port can be used instead of autodisvery.
+    RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
+    // RCCHECK(rmw_uros_discover_agent(rmw_options));
 #endif
 
-	// create init_options
-	RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
+    // create init_options
+    RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
 
-	// create node
-	rcl_node_t node;
-	RCCHECK(rclc_node_init_default(&node, "esp32_gpio_publisher", "", &support));
+    // create node
+    rcl_node_t node;
+    RCCHECK(rclc_node_init_default(&node, "esp32_gpio_publisher", "", &support));
 
-	// create publisher
-	RCCHECK(rclc_publisher_init_default(
-		&publisher,
-		&node,
-		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
-		"gpio_publisher"));
+    // create publisher
+    RCCHECK(rclc_publisher_init_default(
+        &publisher,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt32),
+        "gpio_publisher"));
 
-	// create executor
-	rclc_executor_t executor;
-	RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    // create executor
+    rclc_executor_t executor;
+    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
 
-	msg.data = 0;
+    msg.data = 0;
 
-	while(1){
-		rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-		usleep(10000);
-	}
+    while (1)
+    {
+        rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+        usleep(10000);
+    }
 
-	// free resources
-	RCCHECK(rcl_publisher_fini(&publisher, &node));
-	RCCHECK(rcl_node_fini(&node));
+    // free resources
+    RCCHECK(rcl_publisher_fini(&publisher, &node));
+    RCCHECK(rcl_node_fini(&node));
 
-  	vTaskDelete(NULL);
+    vTaskDelete(NULL);
 }
-
 
 void app_main(void)
 {
