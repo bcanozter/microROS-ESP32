@@ -2,13 +2,13 @@
 #ifndef __CAMERA_H__
 #define __CAMERA_H__
 
+#include "freertos/FreeRTOS.h"
 #include <stdio.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
 
 #include "esp_event.h"
-#include "nvs_flash.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
 
 #include "camera_pin.h"
 #include "esp_camera.h"
