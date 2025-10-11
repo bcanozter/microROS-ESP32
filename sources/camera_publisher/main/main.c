@@ -23,6 +23,7 @@
 #include <rcl/error_handling.h>
 #include <std_msgs/msg/int32.h>
 #include <sensor_msgs/msg/compressed_image.h>
+#include <sensor_msgs/msg/camera_info.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
@@ -52,9 +53,12 @@ static const char *TASK_TAG = "uros_camera_publisher";
             ESP_LOGW(TAG, "Failed status on line %d: %d. Continuing.\n", __LINE__, (int)temp_rc); \
         }                                                                                         \
     }
-
+rcl_publisher_t camera_info_publisher;
 rcl_publisher_t publisher;
 sensor_msgs__msg__CompressedImage image;
+sensor_msgs__msg__CameraInfo camera_info;
+
+
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     RCLC_UNUSED(last_call_time);
@@ -67,6 +71,14 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
             memcpy(image.data.data, frame->buf, frame->len);
             image.format = micro_ros_string_utilities_set(image.format, "jpeg");
             RCSOFTCHECK(rcl_publish(&publisher, &image, NULL));
+
+            camera_info.header.stamp.sec = frame->timestamp.tv_sec;
+            camera_info.header.stamp.nanosec = frame->timestamp.tv_usec * 1000;
+            camera_info.header.frame_id = micro_ros_string_utilities_set(camera_info.header.frame_id, "camera_link");
+            camera_info.width = frame->width;
+            camera_info.height = frame->height;
+            
+            RCSOFTCHECK(rcl_publish(&camera_info_publisher, &camera_info, NULL));
             esp_camera_fb_return(frame);
         }
     }
@@ -101,7 +113,11 @@ void micro_ros_task(void *arg)
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, CompressedImage),
         "/camera/image/compressed"));
-
+    RCCHECK(rclc_publisher_init_default(
+        &camera_info_publisher,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, CameraInfo),
+        "/camera/camera_info"));
     // create timer,
     rcl_timer_t timer;
     const unsigned int timer_timeout = 1000;
@@ -128,6 +144,7 @@ void micro_ros_task(void *arg)
     micro_ros_utilities_memory_rule_t rules[] = {
         //Maximum data capacity, ~100KB
         {"data", 102400},
+        {"d", 5 * sizeof(double)},
     };
     conf.rules = rules;
     conf.n_rules = sizeof(rules) / sizeof(rules[0]);
@@ -139,10 +156,25 @@ void micro_ros_task(void *arg)
     {
         ESP_LOGE(TASK_TAG, "Unable to create message memory. Abort.");
         RCCHECK(rcl_publisher_fini(&publisher, &node));
+        RCCHECK(rcl_publisher_fini(&camera_info_publisher, &node));
         RCCHECK(rcl_node_fini(&node));
         vTaskDelete(NULL);
         return;
     }
+
+    //This is dummy data
+    //Ensure to calibrate camera using https://github.com/ros-perception/image_pipeline/tree/jazzy/camera_calibration
+    camera_info.header.frame_id = micro_ros_string_utilities_set(camera_info.header.frame_id, "camera_link");
+    camera_info.distortion_model = micro_ros_string_utilities_set(camera_info.distortion_model, "plumb_bob");
+    camera_info.width = 320;  // QVGA width
+    camera_info.height = 240; // QVGA height
+    camera_info.binning_x = 0;
+    camera_info.binning_y = 0;
+    camera_info.roi.x_offset = 0;
+    camera_info.roi.y_offset = 0;
+    camera_info.roi.height = 240;
+    camera_info.roi.width = 320;
+    camera_info.roi.do_rectify = false;
 
     while (1)
     {
@@ -152,6 +184,7 @@ void micro_ros_task(void *arg)
 
     // free resources
     RCCHECK(rcl_publisher_fini(&publisher, &node));
+    RCCHECK(rcl_publisher_fini(&camera_info_publisher, &node));
     RCCHECK(rcl_node_fini(&node));
 
     vTaskDelete(NULL);
