@@ -20,3 +20,5 @@ esp32_toolchain.cmake
 include
 #VSCode
 .VSCode
+sdkconfig
+sdkconfig.old
