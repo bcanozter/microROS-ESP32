@@ -109,7 +109,7 @@ void micro_ros_task(void *arg)
         bool connected = rmw_uros_ping_agent(100, 3) == RMW_RET_OK;
         if (!connected)
         {
-            printf("Unable to ping micro-ros-agen, retrying...\n");
+            printf("Unable to ping micro-ros-agent, retrying...\n");
             RCSOFTCHECK(rcl_init_options_fini(&init_options));
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
@@ -130,7 +130,7 @@ void micro_ros_task(void *arg)
         executor = rclc_executor_get_zero_initialized_executor();
 
         RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
-
+        printf("Connected to micro-ros-agent.\n");
         while (1)
         {
             rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
