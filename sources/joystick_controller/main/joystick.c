@@ -3,9 +3,10 @@
 #include "esp_adc/adc_continuous.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
+#include "joystick.h"
+#include "ros.h"
 
 #define EXAMPLE_ADC_UNIT ADC_UNIT_1
 #define _EXAMPLE_ADC_UNIT_STR(unit) #unit
@@ -27,14 +28,15 @@
 #define EXAMPLE_READ_LEN 256
 #define Z_PIN_GPIO 14
 #define ADC_MAX_VALUE 4095
-#define DEAD_ZONE_THRESHOLD 0.01f
+#define DEAD_ZONE_THRESHOLD 0.1f
 
 // ADC channels for X and Y axes (GPIO12, GPIO13)
 static adc_channel_t channel[2] = {ADC_CHANNEL_4, ADC_CHANNEL_5};
 
 static TaskHandle_t s_task_handle;
 static const char *TAG = "joystick";
-
+static joystick_input_t joystick_input = {0};
+joystick_input_t *joystick_controller = &joystick_input;
 static bool IRAM_ATTR s_conv_done_cb(adc_continuous_handle_t handle,
                                      const adc_continuous_evt_data_t *edata,
                                      void *user_data)
@@ -71,11 +73,10 @@ static void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num,
         adc_pattern[i].channel = channel[i] & 0x7;
         adc_pattern[i].unit = EXAMPLE_ADC_UNIT;
         adc_pattern[i].bit_width = EXAMPLE_ADC_BIT_WIDTH;
-
-        ESP_LOGI(TAG, "adc_pattern[%d].atten is :%" PRIx8, i, adc_pattern[i].atten);
-        ESP_LOGI(TAG, "adc_pattern[%d].channel is :%" PRIx8, i,
-                 adc_pattern[i].channel);
-        ESP_LOGI(TAG, "adc_pattern[%d].unit is :%" PRIx8, i, adc_pattern[i].unit);
+        // ESP_LOGI(TAG, "adc_pattern[%d].atten is :%" PRIx8, i, adc_pattern[i].atten);
+        // ESP_LOGI(TAG, "adc_pattern[%d].channel is :%" PRIx8, i,
+        //          adc_pattern[i].channel);
+        // ESP_LOGI(TAG, "adc_pattern[%d].unit is :%" PRIx8, i, adc_pattern[i].unit);
     }
     dig_cfg.adc_pattern = adc_pattern;
     ESP_ERROR_CHECK(adc_continuous_config(handle, &dig_cfg));
@@ -113,7 +114,6 @@ void joystick_task(void *arg)
 
     s_task_handle = xTaskGetCurrentTaskHandle();
 
-    // Initialize GPIO for Z pin
     gpio_init();
 
     adc_continuous_handle_t handle = NULL;
@@ -166,9 +166,12 @@ void joystick_task(void *arg)
 
                 int z_val = gpio_get_level(Z_PIN_GPIO);
 
-                // Always publish X,Y,Z values
-                ESP_LOGI(TAG, "X=%.3f Y=%.3f Z=%d", scaled_x, scaled_y,
-                         z_val);
+                // update global joystick state
+                joystick_controller->x = scaled_x;
+                joystick_controller->y = scaled_y;
+                joystick_controller->z = (double)z_val;
+                //TODO: send to a queue from this task?
+                publish_twist_msg();
 
                 vTaskDelay(100);
             }
