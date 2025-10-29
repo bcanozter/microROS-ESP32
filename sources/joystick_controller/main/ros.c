@@ -1,3 +1,4 @@
+
 #include "freertos/FreeRTOS.h"
 #include <unistd.h>
 #include <string.h>
@@ -11,12 +12,12 @@
 #include <rcl/error_handling.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
-#include <std_msgs/msg/int32.h>
+#include <geometry_msgs/msg/twist.h>
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
 #endif
 #include "joystick.h"
-
+#include "ros.h"
 #define RCCHECK(fn)                                                                      \
     {                                                                                    \
         rcl_ret_t temp_rc = fn;                                                          \
@@ -34,17 +35,15 @@
             printf("Failed status on line %d: %d. Continuing.\n", __LINE__, (int)temp_rc); \
         }                                                                                  \
     }
-rcl_publisher_t publisher;
-std_msgs__msg__Int32 msg;
+rcl_publisher_t twist_publisher;
 
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     RCLC_UNUSED(last_call_time);
     if (timer != NULL)
     {
-        printf("Publishing: %d\n", (int)msg.data);
-        RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
-        msg.data++;
+        printf("X=%.3f Y=%.3f Z=%.f", joystick_controller->x, joystick_controller->y,
+               joystick_controller->z);
     }
 }
 
@@ -71,29 +70,15 @@ void micro_ros_task(void *arg)
     rcl_node_t node;
     RCCHECK(rclc_node_init_default(&node, "joystick_controller_node", "", &support));
 
-    // create publisher
     RCCHECK(rclc_publisher_init_default(
-        &publisher,
+        &twist_publisher,
         &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-        "dummy"));
-
-    // create timer,
-    rcl_timer_t timer;
-    const unsigned int timer_timeout = 1000;
-    RCCHECK(rclc_timer_init_default2(
-        &timer,
-        &support,
-        RCL_MS_TO_NS(timer_timeout),
-        timer_callback,
-        true));
+        ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+        "cmd_vel"));
 
     // create executor
     rclc_executor_t executor;
     RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
-    RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
-    msg.data = 0;
 
     while (1)
     {
@@ -102,10 +87,27 @@ void micro_ros_task(void *arg)
     }
 
     // free resources
-    RCCHECK(rcl_publisher_fini(&publisher, &node));
+    RCCHECK(rcl_publisher_fini(&twist_publisher, &node));
     RCCHECK(rcl_node_fini(&node));
 
     vTaskDelete(NULL);
+}
+
+rcl_ret_t publish_twist_msg(void)
+{
+    joystick_input_t *ptr = joystick_controller;
+    geometry_msgs__msg__Twist twist_msg;
+
+    twist_msg.linear.x = (double)ptr->x;
+    twist_msg.linear.y = (double)ptr->y;
+    twist_msg.linear.z = (double)ptr->z;
+
+    twist_msg.angular.x = 0.0;
+    twist_msg.angular.y = 0.0;
+    twist_msg.angular.z = 0.0;
+
+    rcl_ret_t ret = rcl_publish(&twist_publisher, &twist_msg, NULL);
+    return ret;
 }
 
 void app_main(void)
@@ -113,14 +115,12 @@ void app_main(void)
 #if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
     ESP_ERROR_CHECK(uros_network_interface_initialize());
 #endif
-    // TODO
-
-    // xTaskCreate(joystick_task,
-    //             "joystick_task",
-    //             4096,
-    //             NULL,
-    //             10,
-    //             NULL);
+    xTaskCreate(joystick_task,
+                "joystick_task",
+                4096,
+                NULL,
+                10,
+                NULL);
     xTaskCreate(micro_ros_task,
                 "uros_task",
                 CONFIG_MICRO_ROS_APP_STACK,
