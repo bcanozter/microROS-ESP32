@@ -55,7 +55,7 @@ _Ensure to set MicroROS Agent WIFI Adress and Port._
 
 I used `rqt` to monitor the image topic and visualize. Feel free to use any other ros tool to visualize the image topic.
 
-![Image Output](/docs/screenshots/Image_Output.png "Output"){:height="600px" width="600px"}
+<img src="/docs/screenshots/Image_Output.png" width="50%" height="50%">
 
 ### gpio_interrupt_publisher
 
@@ -71,7 +71,7 @@ Then, reinitialize necessary components in order to establish a healthy connecti
 3. Start micro-ros agent.
 4. Confirm connection.
 
-![Reconnection Terminal Output](/docs/screenshots/reconnection_example.png){:height="600px width="800px}
+<img src="/docs/screenshots/reconnection_example.png" width="30%">
 
 [micro-ROS tutorials](https://micro.ros.org/docs/tutorials/programming_rcl_rclc/micro-ROS/)
 I came across this helpful micro-ROS tutorial above where I discovered there is a way to ping agent.
@@ -91,7 +91,7 @@ if (rmw_uros_ping_agent(100, 3) != RMW_RET_OK)
 
 [Turtlesim](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html#use-turtlesim)
 
-![2-Axis Joystick](/docs/2_axis_joystick.jpg "2-Axis Joystick"){:height="200px" width="200"}
+<img src="/docs/2_axis_joystick.jpg" width="20%">
 
 Publish `cmd_vel (geometry_msgs/msg/Twist)` using a 2-axis Joystick connected to esp32.
 
