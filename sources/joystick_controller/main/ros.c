@@ -74,7 +74,7 @@ void micro_ros_task(void *arg)
         &twist_publisher,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-        "cmd_vel"));
+        "/turtle1/cmd_vel"));
 
     // create executor
     rclc_executor_t executor;
@@ -98,13 +98,14 @@ rcl_ret_t publish_twist_msg(void)
     joystick_input_t *ptr = joystick_controller;
     geometry_msgs__msg__Twist twist_msg;
 
+    //TODO
     twist_msg.linear.x = (double)ptr->x;
-    twist_msg.linear.y = (double)ptr->y;
-    twist_msg.linear.z = (double)ptr->z;
+    twist_msg.linear.y = 0.0;
+    twist_msg.linear.z = 0.0;
 
     twist_msg.angular.x = 0.0;
     twist_msg.angular.y = 0.0;
-    twist_msg.angular.z = 0.0;
+    twist_msg.angular.z = (double)ptr->y;
 
     rcl_ret_t ret = rcl_publish(&twist_publisher, &twist_msg, NULL);
     return ret;
