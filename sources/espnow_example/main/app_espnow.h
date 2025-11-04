@@ -71,5 +71,5 @@ typedef struct esp_now_msg_send
 } espnow_send_param_t;
 
 void espnow_task(void);
-esp_err_t espnow_data_parse(uint8_t *, uint16_t);
+esp_err_t espnow_data_parse(const uint8_t *, uint16_t);
 #endif

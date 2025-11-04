@@ -21,18 +21,10 @@ static const char *TAG = "espnow_example";
 static QueueHandle_t s_espnow_recv_queue = NULL;
 
 static uint8_t s_broadcast_mac[ESP_NOW_ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-static uint16_t s_espnow_seq[ESPNOW_DATA_MAX] = {0, 0};
 static uint8_t espnow_payload[ESPNOW_PAYLOAD_MAX_LEN];
 static uint32_t current_seq = 0;
 static espnow_send_param_t *sent_msgs;
 static SemaphoreHandle_t sent_msgs_mutex = NULL;
-
-static void wifi_init(void)
-{
-#if CONFIG_ESPNOW_ENABLE_LONG_RANGE
-    ESP_ERROR_CHECK(esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_LR));
-#endif
-}
 
 esp_err_t app_espnow_create_peer(uint8_t dst_mac[ESP_NOW_ETH_ALEN])
 {
@@ -143,10 +135,11 @@ void espnow_data_prepare(uint8_t *buf, const uint8_t *payload, size_t payload_le
     {
         temp->seq = ++current_seq;
     }
+    ESP_LOGW(TAG, "free heap %" PRIu32 ", minimum %" PRIu32 "", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
     memcpy(temp->payload, payload, payload_len);
 }
 
-esp_err_t espnow_data_parse(uint8_t *data, uint16_t data_len)
+esp_err_t espnow_data_parse(const uint8_t *data, uint16_t data_len)
 {
     esp_err_t ret = ESP_OK;
     app_espnow_data_t *buf = (app_espnow_data_t *)data;
@@ -184,10 +177,6 @@ esp_err_t esp_now_send_broadcast(const uint8_t *payload, size_t payload_len, boo
 void espnow_task_main(void *pvParameter)
 {
     espnow_event_t evt;
-    int ret;
-    bool is_broadcast = false;
-
-    espnow_send_param_t *send_param = (espnow_send_param_t *)pvParameter;
 
     while (xQueueReceive(s_espnow_recv_queue, &evt, portMAX_DELAY) == pdTRUE)
     {
@@ -313,11 +302,22 @@ static void esp_now_send_timer_cb(TimerHandle_t timer)
     xSemaphoreGive(sent_msgs_mutex);
 }
 
+static void debug_timer_cb(TimerHandle_t timer){
+    uint8_t sta_mac[6] = {0};
+    esp_wifi_get_mac(ESP_IF_WIFI_STA, sta_mac);
+    char msg[100];
+    sprintf(msg,"From["MACSTR"] Hello World!!\n",MAC2STR(sta_mac));
+    esp_now_send_broadcast((const uint8_t *)msg,sizeof(msg),true);
+}
+
 void espnow_task(void)
 {
-    wifi_init();
     espnow_init();
     TimerHandle_t esp_now_send_timer = xTimerCreate("esp_now_send_timer", 100 / portTICK_PERIOD_MS, pdTRUE,
                                                     NULL, esp_now_send_timer_cb);
     xTimerStart(esp_now_send_timer, portMAX_DELAY);
+
+    // TimerHandle_t debug_timer = xTimerCreate("debug_timer", 5000 / portTICK_PERIOD_MS, pdTRUE,
+    //     NULL, debug_timer_cb);
+    // xTimerStart(debug_timer, portMAX_DELAY);
 }
