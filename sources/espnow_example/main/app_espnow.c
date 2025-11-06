@@ -302,12 +302,13 @@ static void esp_now_send_timer_cb(TimerHandle_t timer)
     xSemaphoreGive(sent_msgs_mutex);
 }
 
-static void debug_timer_cb(TimerHandle_t timer){
+static void debug_timer_cb(TimerHandle_t timer)
+{
     uint8_t sta_mac[6] = {0};
     esp_wifi_get_mac(ESP_IF_WIFI_STA, sta_mac);
     char msg[100];
-    sprintf(msg,"From["MACSTR"] Hello World!!\n",MAC2STR(sta_mac));
-    esp_now_send_broadcast((const uint8_t *)msg,sizeof(msg),true);
+    sprintf(msg, "From[" MACSTR "] Hello World!!\n", MAC2STR(sta_mac));
+    esp_now_send_broadcast((const uint8_t *)msg, sizeof(msg), true);
 }
 
 void espnow_task(void)
