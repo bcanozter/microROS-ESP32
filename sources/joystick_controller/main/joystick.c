@@ -30,6 +30,9 @@
 #define ADC_MAX_VALUE 4095
 #define DEAD_ZONE_THRESHOLD 0.1f
 
+// These are the analog readings when joystick is centered.
+#define X_CENTER 0.60f
+#define Y_CENTER 0.49f
 // ADC channels for X and Y axes (GPIO12, GPIO13)
 static adc_channel_t channel[2] = {ADC_CHANNEL_4, ADC_CHANNEL_5};
 
@@ -84,10 +87,13 @@ static void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num,
     *out_handle = handle;
 }
 
-static float scale_joystick_value(uint32_t raw_value)
+static float scale_joystick_value(uint32_t raw_value, float center)
 {
-    // Simple scaling: 0-1 range based on ADC_MAX_VALUE
-    return (float)raw_value / (float)ADC_MAX_VALUE;
+    float scaled = ((float)raw_value / (float)ADC_MAX_VALUE);
+    scaled = (scaled - center) / 0.5f;
+    if (scaled > 1.0f) scaled = 1.0f;
+    if (scaled < -1.0f) scaled = -1.0f;
+    return scaled;
 }
 
 static void gpio_init(void)
@@ -160,9 +166,8 @@ void joystick_task(void *arg)
                         y_val = data;
                 }
 
-                // Scale to 0-1 range
-                float scaled_x = scale_joystick_value(x_val);
-                float scaled_y = scale_joystick_value(y_val);
+                float scaled_x = scale_joystick_value(x_val,X_CENTER);
+                float scaled_y = scale_joystick_value(y_val,Y_CENTER);
 
                 int z_val = gpio_get_level(Z_PIN_GPIO);
 
@@ -172,7 +177,7 @@ void joystick_task(void *arg)
                 joystick_controller->z = (double)z_val;
                 //TODO: send to a queue from this task?
                 publish_twist_msg();
-
+                // ESP_LOGI(TAG, "X:%f Y:%f Z:%f",scaled_x,scaled_y,(double)z_val);
                 vTaskDelay(100);
             }
             else if (ret == ESP_ERR_TIMEOUT)
