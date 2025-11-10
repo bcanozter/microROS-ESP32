@@ -97,6 +97,10 @@ Publish `cmd_vel (geometry_msgs/msg/Twist)` using a 2-axis Joystick connected to
 
 Use the official ROS turtlesim to test and observe the movement on screen.
 
+Result
+
+<img src="/docs/turtlesim.png" width="20%">
+
 ### espnow_example
 
 > TODO
