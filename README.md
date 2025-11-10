@@ -99,7 +99,7 @@ Use the official ROS turtlesim to test and observe the movement on screen.
 
 Result
 
-<img src="/docs/turtlesim.png" width="20%">
+<img src="/docs/screenshots/turtlesim.png" width="20%">
 
 ### espnow_example
 
